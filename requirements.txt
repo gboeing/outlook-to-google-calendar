@@ -1,0 +1,7 @@
+# pip install --upgrade -r requirements.txt
+beautifulsoup4
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+O365
+pytz
