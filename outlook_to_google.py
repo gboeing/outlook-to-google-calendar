@@ -65,7 +65,7 @@ def get_outlook_events(cal):
 
 def clean_subject(subject):
     # remove prefix clutter from an outlook event subject
-    remove = ["Fwd: " "Invitation: ", "Updated invitation: ", "Updated invitation with note: "]
+    remove = ["Fwd: ", "Invitation: ", "Updated invitation: ", "Updated invitation with note: "]
     for s in remove:
         subject = subject.replace(s, "")
     return subject
