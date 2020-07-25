@@ -118,12 +118,16 @@ def delete_google_events(se):
     result = se.list(calendarId=gcid, maxResults=mr).execute()
     gcal_events = result.get("items", [])
 
-    # if nextPageToken exists, we need to paginate (sometimes a few items)
-    # are spread across several pages of results for whatever reason
+    # if nextPageToken exists, we need to paginate: sometimes a few items are
+    # spread across several pages of results for whatever reason
+    i = 1
     while "nextPageToken" in result:
         npt = result["nextPageToken"]
         result = se.list(calendarId=gcid, maxResults=mr, pageToken=npt).execute()
         gcal_events.extend(result.get("items", []))
+        i += 1
+
+    print("Retrieved {} events across {} pages from Google.".format(len(gcal_events), i))
 
     # delete each event retrieved
     for gcal_event in gcal_events:
@@ -207,6 +211,8 @@ if config.force or not check_ts_match(outlook_events_ts):
     # save event ids/timestamps json to disk for the next run
     with open(config.events_ts_json_path, "w") as f:
         json.dump(outlook_events_ts, f)
+else:
+    print("No changes found.")
 
 # all done
 elapsed_time = time.time() - start_time
