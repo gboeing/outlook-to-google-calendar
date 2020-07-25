@@ -111,10 +111,19 @@ def build_gcal_event(event):
 def delete_google_events(se):
     # delete all events from google calendar
     start_time = time.time()
+    gcid = config.google_calendar_id
+    mr = 2500
 
     # retrieve a list of all events
-    result = se.list(calendarId=config.google_calendar_id, maxResults=2500).execute()
+    result = se.list(calendarId=gcid, maxResults=mr).execute()
     gcal_events = result.get("items", [])
+
+    # if nextPageToken exists, we need to paginate (sometimes a few items)
+    # are spread across several pages of results for whatever reason
+    while "nextPageToken" in result:
+        npt = result["nextPageToken"]
+        result = se.list(calendarId=gcid, maxResults=mr, pageToken=npt).execute()
+        gcal_events.extend(result.get("items", []))
 
     # delete each event retrieved
     for gcal_event in gcal_events:
@@ -190,7 +199,7 @@ outlook_events_ts = get_event_timestamps(outlook_events)
 
 # check if all the current event ids/timestamps match the previous run
 # only update google calendar if they don't all match (means there are changes)
-if not check_ts_match(outlook_events_ts):
+if config.force or not check_ts_match(outlook_events_ts):
     # delete all existing google events then add all outlook events
     delete_google_events(se)
     add_google_events(se, outlook_events)
