@@ -8,7 +8,7 @@ Script connects to Microsoft API using the [O365](https://github.com/O365/python
 
 ## Setup
 
-  - Create config.py (you can adapt config_sample.py) to hold your personal configuration details, include Microsoft client_id and client_secret and Google calendar ID.
+  - Create config.py (you can adapt config_sample.py) to hold your personal configuration details, include Microsoft client_id and client_secret and Google calendar ID (create a new Google calendar just for this, or else your existing events will be deleted!).
   - Get Microsoft client_id and client_secret by following the O365 [instructions](https://github.com/O365/python-o365#authentication) on how to authenticate on behalf of a user.
   - In credentials folder, run quickstart.py to create and pickle permanent Google API access token.
   - Microsoft API access token is created interactively via URL on first run, then permanently stored. It expires in 90 days *if* you don't run the script within that time.
