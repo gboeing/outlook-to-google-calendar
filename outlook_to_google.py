@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from O365 import Account
+from O365 import Connection
 from O365 import FileSystemTokenBackend
 
 import config
@@ -24,6 +25,9 @@ def authenticate_outlook():
     if not account.is_authenticated:
         # not authenticated, throw error
         account.authenticate(scopes=config.outlook_scopes)
+
+    connection = Connection(credentials, token_backend=token_backend, scopes=config.outlook_scopes)
+    connection.refresh_token()
 
     print("Authenticated Outlook.")
     return account
