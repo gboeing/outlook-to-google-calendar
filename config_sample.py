@@ -15,3 +15,5 @@ google_calendar_id = "your-calendar-id-here@group.calendar.google.com"
 events_ts_json_path = "./events_ts.json"
 pause = 0.1
 force = False  # force full run even if no changes
+only_title = False  # sync only title of event
+no_all_day_events = False  # do not sync all-day events

@@ -60,7 +60,7 @@ def get_outlook_events(cal):
         cal.new_query("start").greater_equal(start).chain("and").on_attribute("end").less_equal(end)
     )
     events = cal.get_events(query=query, limit=None, include_recurring=True)
-    events = list(events)
+    events = [ event for event in events if not config.no_all_day_events or not event.is_all_day ]
 
     elapsed_time = time.time() - start_time
     print("Retrieved {} events from Outlook in {:.1f} secs.".format(len(events), elapsed_time))
@@ -86,9 +86,13 @@ def build_gcal_event(event):
 
     e = {
         "summary": clean_subject(event.subject),
-        "location": event.location["displayName"],
-        "description": clean_body(event.body),
     }
+
+    if not config.only_title:
+        e.update({
+            "location": event.location["displayName"],
+            "description": clean_body(event.body),
+        })
 
     if event.is_all_day:
         # all day events just get a start/end date
