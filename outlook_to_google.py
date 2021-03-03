@@ -112,10 +112,10 @@ def build_gcal_event(event):
     return e
 
 
-def delete_google_events(se):
+def delete_google_events(se, google_calendar_id):
     # delete all events from google calendar
     start_time = time.time()
-    gcid = config.google_calendar_id
+    gcid = google_calendar_id
     mr = 2500
 
     # retrieve a list of all events
@@ -135,7 +135,7 @@ def delete_google_events(se):
 
     # delete each event retrieved
     for gcal_event in gcal_events:
-        request = se.delete(calendarId=config.google_calendar_id, eventId=gcal_event["id"])
+        request = se.delete(calendarId=google_calendar_id, eventId=gcal_event["id"])
         result = request.execute()
         assert result == ""
         time.sleep(config.pause)
@@ -144,13 +144,13 @@ def delete_google_events(se):
     print("Deleted {} events from Google in {:.1f} secs.".format(len(gcal_events), elapsed_time))
 
 
-def add_google_events(se, events):
+def add_google_events(se, events, google_calendar_id):
     # add all events to google calendar
     start_time = time.time()
 
     for event in events:
         e = build_gcal_event(event)
-        result = se.insert(calendarId=config.google_calendar_id, body=e).execute()
+        result = se.insert(calendarId=google_calendar_id, body=e).execute()
         assert isinstance(result, dict)
         time.sleep(config.pause)
 
@@ -169,12 +169,12 @@ def get_event_timestamps(outlook_events):
     return ts
 
 
-def check_ts_match(new_events):
+def check_ts_match(new_events, events_ts_json_path):
     # compare old event ids/timestamps to new ones retrieved during current run
 
     try:
         # load the old events' ids/timestamps saved to disk during previous run
-        with open(config.events_ts_json_path, "r") as f:
+        with open(events_ts_json_path, "r") as f:
             old_events = json.load(f)
 
         # make sure all ids and timestamps match between old and new
@@ -200,23 +200,26 @@ start_time = time.time()
 outlook_acct = authenticate_outlook()
 se = authenticate_google()
 
-# get all events from outlook
-outlook_cal = outlook_acct.schedule().get_default_calendar()
-outlook_events = get_outlook_events(outlook_cal)
-outlook_events_ts = get_event_timestamps(outlook_events)
+for cals in config.calendars:
+    print("Checking {0}".format(cals[0]))
+    events_ts_json_path = config.events_ts_json_path.format(cals[0])
+    # get all events from outlook
+    outlook_cal = outlook_acct.schedule().get_calendar(calendar_name=cals[0])
+    outlook_events = get_outlook_events(outlook_cal)
+    outlook_events_ts = get_event_timestamps(outlook_events)
 
-# check if all the current event ids/timestamps match the previous run
-# only update google calendar if they don't all match (means there are changes)
-if config.force or not check_ts_match(outlook_events_ts):
-    # delete all existing google events then add all outlook events
-    delete_google_events(se)
-    add_google_events(se, outlook_events)
+    # check if all the current event ids/timestamps match the previous run
+    # only update google calendar if they don't all match (means there are changes)
+    if config.force or not check_ts_match(outlook_events_ts, events_ts_json_path):
+        # delete all existing google events then add all outlook events
+        delete_google_events(se, cals[1])
+        add_google_events(se, outlook_events, cals[1])
 
-    # save event ids/timestamps json to disk for the next run
-    with open(config.events_ts_json_path, "w") as f:
-        json.dump(outlook_events_ts, f)
-else:
-    print("No changes found.")
+        # save event ids/timestamps json to disk for the next run
+        with open(events_ts_json_path, "w") as f:
+            json.dump(outlook_events_ts, f)
+    else:
+        print("No changes found.")
 
 # all done
 elapsed_time = time.time() - start_time
