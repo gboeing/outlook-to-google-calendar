@@ -1,4 +1,4 @@
-events_ts.json
+events_ts_*.json
 config.py
 credentials/*
 !credentials/quickstart.py
