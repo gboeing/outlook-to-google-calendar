@@ -17,3 +17,4 @@ pause = 0.1
 force = False  # force full run even if no changes
 only_title = False  # sync only title of event
 no_all_day_events = False  # do not sync all-day events
+incremental_sync = False  # use incremental sync - add only missing appointments, remove only additional
