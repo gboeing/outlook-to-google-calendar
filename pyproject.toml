@@ -1,0 +1,15 @@
+[project]
+name = "outlook-to-google-calendar"
+version = "0.0.0"
+description = "Sync Outlook calendar to Google calendar"
+readme = "readme.md"
+requires-python = "==3.13.*"
+dependencies = [
+    "beautifulsoup4==4.13.*",
+    "google-api-python-client==2.170.*",
+    "google-auth-httplib2==0.2.*",
+    "google-auth-oauthlib==1.2.*",
+    "o365==2.1.*",
+    "pytz==2025.*",
+    "ruff>=0.11.12",
+]
