@@ -3,6 +3,7 @@ config.py
 credentials/*
 !credentials/quickstart.py
 logs/*
+uv.lock
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
