@@ -12,7 +12,7 @@ The script connects to the Microsoft API using the [O365 package](https://github
       - **Create a new Google calendar just for this application, or else your existing events will be deleted!**
       - Create Google credentials for this application (see overview section above) and save as `credentials/google_credentials.json`.
       - Get the Microsoft `client_id` and `client_secret` by following the O365 [instructions](https://github.com/O365/python-o365#authentication) on how to authenticate on behalf of a user.
-  - Run `pip install --upgrade -r requirements.txt` to install the [required Python dependencies](requirements.txt).
+  - Run `uv sync` to install the required Python dependencies into a virtual environment.
   - In the [credentials folder](credentials), run [`python quickstart.py`](credentials/quickstart.py) to create a Google API access token.
   - Microsoft API access token is created interactively via URL on first run, then permanently stored. It expires in 90 days *if* you don't run the script within that time.
   - On your server, set up a cron job to run [`outlook_to_google.py`](outlook_to_google.py) (using [run.sh](run.sh)) every 15 minutes (or however often you need).
