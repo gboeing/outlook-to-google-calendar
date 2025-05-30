@@ -11,5 +11,4 @@ dependencies = [
     "google-auth-oauthlib==1.2.*",
     "o365==2.1.*",
     "pytz==2025.*",
-    "ruff>=0.11.12",
 ]
