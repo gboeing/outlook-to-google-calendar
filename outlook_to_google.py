@@ -1,15 +1,13 @@
 import datetime as dt
 import json
 import pickle
-import pytz
 import time
 
+import pytz
 from bs4 import BeautifulSoup
-from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
-from O365 import Account
-from O365 import Connection
-from O365 import FileSystemTokenBackend
+from googleapiclient.discovery import build
+from O365 import Account, Connection, FileSystemTokenBackend
 
 import config
 
@@ -19,7 +17,7 @@ def authenticate_outlook():
 
     credentials = (config.outlook_client_id, config.outlook_client_secret)
     token_backend = FileSystemTokenBackend(
-        token_path=config.outlook_token_path, token_filename=config.outlook_token_filename
+        token_path=config.outlook_token_path, token_filename=config.outlook_token_filename,
     )
     account = Account(credentials, token_backend=token_backend)
     if not account.is_authenticated:
@@ -109,7 +107,7 @@ def build_gcal_event(event):
     return e
 
 
-def delete_google_events(se):
+def delete_google_events(se) -> None:
     # delete all events from google calendar
     gcid = config.google_calendar_id
     mr = 2500
@@ -138,7 +136,7 @@ def delete_google_events(se):
     print(f"{timestamp()}  Deleted {len(gcal_events)} events from Google.")
 
 
-def add_google_events(se, events):
+def add_google_events(se, events) -> None:
     # add all events to google calendar
     for event in events:
         e = build_gcal_event(event)
@@ -160,12 +158,12 @@ def get_event_timestamps(outlook_events):
     return ts
 
 
-def check_ts_match(new_events):
+def check_ts_match(new_events) -> bool:
     # compare old event ids/timestamps to new ones retrieved during current run
 
     try:
         # load the old events' ids/timestamps saved to disk during previous run
-        with open(config.events_ts_json_path, "r") as f:
+        with open(config.events_ts_json_path) as f:
             old_events = json.load(f)
 
         # make sure all ids and timestamps match between old and new
@@ -183,8 +181,9 @@ def check_ts_match(new_events):
     return True
 
 
-def timestamp():
+def timestamp() -> str:
     return f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}"
+
 
 if __name__ == "__main__":
     print(f"{timestamp()} Started process.")
