@@ -1,6 +1,6 @@
-#!/bin/sh -e
-. ~/apps/otg-env/bin/activate
+#!/bin/bash
+set -eu pipefail
 cd ~/apps/otg-env/app/
-python outlook_to_google.py >> ~/apps/otg-env/app/logs/log.txt
-deactivate
+uv sync
+uv run ./outlook_to_google.py > ./logs/log.txt
 cd ~
