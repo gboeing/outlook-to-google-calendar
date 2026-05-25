@@ -156,7 +156,7 @@ def delete_google_events(se) -> None:
         if result != "":
             raise RuntimeError(f"Unexpected Google delete response: {result!r}")
         time.sleep(config.pause)
-    print(f"{timestamp()}  Deleted {len(gcal_events)} events from Google.")
+    print(f"{timestamp()} Deleted {len(gcal_events)} events from Google.")
 
 
 def add_google_events(se, google_events) -> None:
