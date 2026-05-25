@@ -17,14 +17,19 @@ def authenticate_outlook():
 
     credentials = (config.outlook_client_id, config.outlook_client_secret)
     token_backend = FileSystemTokenBackend(
-        token_path=config.outlook_token_path, token_filename=config.outlook_token_filename,
+        token_path=config.outlook_token_path,
+        token_filename=config.outlook_token_filename,
     )
     account = Account(credentials, token_backend=token_backend)
     if not account.is_authenticated:
         # not authenticated, throw error
         account.authenticate(scopes=config.outlook_scopes)
 
-    connection = Connection(credentials, token_backend=token_backend, scopes=config.outlook_scopes)
+    connection = Connection(
+        credentials,
+        token_backend=token_backend,
+        scopes=config.outlook_scopes,
+    )
     connection.refresh_token()
 
     print(f"{timestamp()} Authenticated Outlook.")
@@ -64,7 +69,12 @@ def get_outlook_events(cal):
 
 def clean_subject(subject):
     # remove prefix clutter from an outlook event subject
-    remove = ["Fwd: ", "Invitation: ", "Updated invitation: ", "Updated invitation with note: "]
+    remove = [
+        "Fwd: ",
+        "Invitation: ",
+        "Updated invitation: ",
+        "Updated invitation with note: ",
+    ]
     for s in remove:
         subject = subject.replace(s, "")
     return subject
@@ -125,11 +135,16 @@ def delete_google_events(se) -> None:
         gcal_events.extend(result.get("items", []))
         i += 1
 
-    print(f"{timestamp()} Retrieved {len(gcal_events)} events across {i} pages from Google.")
+    print(
+        f"{timestamp()} Retrieved {len(gcal_events)} events across {i} pages from Google.",
+    )
 
     # delete each event retrieved
     for gcal_event in gcal_events:
-        request = se.delete(calendarId=config.google_calendar_id, eventId=gcal_event["id"])
+        request = se.delete(
+            calendarId=config.google_calendar_id,
+            eventId=gcal_event["id"],
+        )
         result = request.execute()
         assert result == ""
         time.sleep(config.pause)

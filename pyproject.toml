@@ -12,3 +12,23 @@ dependencies = [
     "o365==2.1.*",
     "pytz==2025.*",
 ]
+
+[dependency-groups]
+dev = ["prek>=0.2", "pytest>=9", "validate-pyproject[all]>=0.24"]
+
+[tool.ruff]
+cache-dir = "~/.cache/pre-commit/ruff"
+line-length = 100
+
+[tool.ruff.lint]
+#extend-ignore = ["T201"]
+#extend-select = ["ALL"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 110 # line length + 10% since it isn't a hard upper bound
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.uv]
+required-version = "==0.11.*"
