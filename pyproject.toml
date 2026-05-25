@@ -5,22 +5,22 @@ description = "Sync Outlook calendar to Google calendar"
 readme = "readme.md"
 requires-python = "==3.13.*"
 dependencies = [
-    "beautifulsoup4==4.13.*",
-    "google-api-python-client==2.170.*",
-    "google-auth-httplib2==0.2.*",
-    "google-auth-oauthlib==1.2.*",
+    "beautifulsoup4==4.14.*",
+    "google-api-python-client==2.196.*",
+    "google-auth-httplib2==0.4.*",
+    "google-auth-oauthlib==1.4.*",
     "o365==2.1.*",
 ]
 
 [dependency-groups]
-dev = ["prek>=0.2", "pytest>=9", "validate-pyproject[all]>=0.24"]
+dev = ["prek>=0.4", "pytest>=9", "validate-pyproject[all]>=0.25"]
 
 [tool.ruff]
 cache-dir = "~/.cache/pre-commit/ruff"
 line-length = 100
 
 [tool.ruff.lint]
-#extend-ignore = ["T201"]
+extend-ignore = ["T201"]
 #extend-select = ["ALL"]
 
 [tool.ruff.lint.pycodestyle]
