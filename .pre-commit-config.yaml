@@ -53,4 +53,3 @@ repos:
           - google-auth-oauthlib
           - O365
           - pytest
-          - pytz

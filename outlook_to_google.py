@@ -1,7 +1,11 @@
+"""Sync Outlook calendar events to a dedicated Google calendar."""
+
 import datetime as dt
 import json
 import pickle
 import time
+from pathlib import Path
+from typing import Any
 
 from bs4 import BeautifulSoup
 from google.auth.transport.requests import Request
@@ -11,9 +15,8 @@ from O365 import Account, Connection, FileSystemTokenBackend
 import config
 
 
-def authenticate_outlook():
-    # authenticate microsoft graph api credentials
-
+def authenticate_outlook() -> Any:
+    """Authenticate Microsoft Graph API credentials."""
     credentials = (config.outlook_client_id, config.outlook_client_secret)
     token_backend = FileSystemTokenBackend(
         token_path=config.outlook_token_path,
@@ -35,14 +38,14 @@ def authenticate_outlook():
     return account
 
 
-def authenticate_google():
-    # authenticate google api credentials
-
-    with open(config.google_token_path, "rb") as token:
-        creds = pickle.load(token)
+def authenticate_google() -> Any:
+    """Authenticate Google API credentials."""
+    google_token_path = Path(config.google_token_path)
+    with google_token_path.open("rb") as token:
+        creds = pickle.load(token)  # noqa: S301
     if creds.expired:
         creds.refresh(Request())
-    with open(config.google_token_path, "wb") as token:
+    with google_token_path.open("wb") as token:
         pickle.dump(creds, token)
 
     service = build("calendar", "v3", credentials=creds)
@@ -52,12 +55,11 @@ def authenticate_google():
     return se
 
 
-def get_outlook_events(cal):
-    # get all events from an outlook calendar
-    start = dt.datetime.today() - dt.timedelta(days=config.previous_days)
-    end = dt.datetime.today() + dt.timedelta(days=config.future_days)
-    start = start.replace(tzinfo=cal.protocol.timezone)
-    end = end.replace(tzinfo=cal.protocol.timezone)
+def get_outlook_events(cal: Any) -> list[Any]:
+    """Get all events from an Outlook calendar."""
+    now = dt.datetime.now(tz=cal.protocol.timezone)
+    start = now - dt.timedelta(days=config.previous_days)
+    end = now + dt.timedelta(days=config.future_days)
     events = cal.get_events(
         limit=None,
         include_recurring=True,
@@ -70,8 +72,8 @@ def get_outlook_events(cal):
     return events
 
 
-def clean_subject(subject):
-    # remove prefix clutter from an outlook event subject
+def clean_subject(subject: str) -> str:
+    """Remove prefix clutter from an Outlook event subject."""
     remove = [
         "Fwd: ",
         "Invitation: ",
@@ -83,15 +85,14 @@ def clean_subject(subject):
     return subject
 
 
-def clean_body(body):
-    # strip out html and excess line returns from outlook event body
+def clean_body(body: str) -> str:
+    """Strip out HTML and excess line returns from an Outlook event body."""
     text = BeautifulSoup(body, "html.parser").get_text()
     return text.replace("\n", " ").replace("\r", "\n")
 
 
-def build_gcal_event(event):
-    # construct a google calendar event from an outlook event
-
+def build_gcal_event(event: Any) -> dict[str, Any]:
+    """Construct a Google Calendar event from an Outlook event."""
     e = {
         "summary": clean_subject(event.subject),
         "location": event.location["displayName"],
@@ -122,8 +123,8 @@ def build_gcal_event(event):
     return e
 
 
-def delete_google_events(se) -> None:
-    # delete all events from google calendar
+def delete_google_events(se: Any) -> None:
+    """Delete all events from the Google calendar."""
     gcid = config.google_calendar_id
     mr = 2500
 
@@ -152,24 +153,26 @@ def delete_google_events(se) -> None:
         )
         result = request.execute()
         if result != "":
-            raise RuntimeError(f"Unexpected Google delete response: {result!r}")
+            msg = f"Unexpected Google delete response: {result!r}"
+            raise RuntimeError(msg)
         time.sleep(config.pause)
     print(f"{timestamp()} Deleted {len(gcal_events)} events from Google.")
 
 
-def add_google_events(se, google_events) -> None:
-    # add all events to google calendar
+def add_google_events(se: Any, google_events: list[dict[str, Any]]) -> None:
+    """Add all events to the Google calendar."""
     for google_event in google_events:
         result = se.insert(calendarId=config.google_calendar_id, body=google_event).execute()
         if not isinstance(result, dict):
-            raise RuntimeError(f"Unexpected Google insert response: {result!r}")
+            msg = f"Unexpected Google insert response: {result!r}"
+            raise TypeError(msg)
         time.sleep(config.pause)
 
     print(f"{timestamp()} Added {len(google_events)} events to Google.")
 
 
-def get_event_timestamps(outlook_events):
-    # ids and timestamps of new events retrieved during current run
+def get_event_timestamps(outlook_events: list[Any]) -> dict[str, dict[str, int]]:
+    """Get IDs and timestamps of events retrieved during the current run."""
     ts = {}
     for e in outlook_events:
         ts[e.ical_uid] = {
@@ -179,25 +182,27 @@ def get_event_timestamps(outlook_events):
     return ts
 
 
-def check_ts_match(new_events) -> bool:
-    # compare old event ids/timestamps to new ones retrieved during current run
-
+def check_ts_match(new_events: dict[str, dict[str, int]]) -> bool:
+    """Compare old event IDs and timestamps to newly retrieved events."""
+    # load the old events' ids/timestamps saved to disk during previous run
     try:
-        # load the old events' ids/timestamps saved to disk during previous run
-        with open(config.events_ts_json_path) as f:
+        with Path(config.events_ts_json_path).open() as f:
             old_events = json.load(f)
 
         # make sure all ids and timestamps match between old and new
         if new_events.keys() != old_events.keys():
-            raise ValueError("Event IDs differ.")
+            print(f"{timestamp()} Changes found.")
+            return False
         for k, new_event in new_events.items():
             old_event = old_events[k]
             if new_event["created_ts"] != old_event["created_ts"]:
-                raise ValueError("Event creation timestamp differs.")
+                print(f"{timestamp()} Changes found.")
+                return False
             if new_event["modified_ts"] != old_event["modified_ts"]:
-                raise ValueError("Event modification timestamp differs.")
+                print(f"{timestamp()} Changes found.")
+                return False
 
-    except Exception:
+    except (FileNotFoundError, KeyError, TypeError, json.JSONDecodeError):
         # if json file doesn't exist or if any id or timestamp is different
         print(f"{timestamp()} Changes found.")
         return False
@@ -206,7 +211,8 @@ def check_ts_match(new_events) -> bool:
 
 
 def timestamp() -> str:
-    return f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}"
+    """Return the current timestamp for log messages."""
+    return f"{dt.datetime.now(tz=dt.UTC).astimezone():%Y-%m-%d %H:%M:%S}"
 
 
 if __name__ == "__main__":
@@ -230,7 +236,7 @@ if __name__ == "__main__":
         add_google_events(se, google_events)
 
         # save event ids/timestamps json to disk for the next run
-        with open(config.events_ts_json_path, "w") as f:
+        with Path(config.events_ts_json_path).open("w") as f:
             json.dump(outlook_events_ts, f)
     else:
         print(f"{timestamp()} No changes found.")
