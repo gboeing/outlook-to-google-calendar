@@ -3,7 +3,6 @@ import json
 import pickle
 import time
 
-import pytz
 from bs4 import BeautifulSoup
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -101,9 +100,8 @@ def build_gcal_event(event):
 
     if event.is_all_day:
         # all day events just get a start/end date
-        # use UTC start date to get correct day
-        start_date = event.start.astimezone(pytz.utc).date()
-        end_date = event.end.astimezone(pytz.utc).date()
+        start_date = event.start.date()
+        end_date = event.end.date()
         if end_date <= start_date:
             end_date = start_date + dt.timedelta(days=1)
         start_end = {"start": {"date": str(start_date)}, "end": {"date": str(end_date)}}

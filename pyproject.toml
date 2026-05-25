@@ -10,7 +10,6 @@ dependencies = [
     "google-auth-httplib2==0.2.*",
     "google-auth-oauthlib==1.2.*",
     "o365==2.1.*",
-    "pytz==2025.*",
 ]
 
 [dependency-groups]
