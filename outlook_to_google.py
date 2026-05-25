@@ -161,8 +161,7 @@ def delete_google_events(se) -> None:
 def add_google_events(se, events) -> None:
     # add all events to google calendar
     for event in events:
-        e = build_gcal_event(event)
-        result = se.insert(calendarId=config.google_calendar_id, body=e).execute()
+        result = se.insert(calendarId=config.google_calendar_id, body=event).execute()
         assert isinstance(result, dict)
         time.sleep(config.pause)
 
@@ -223,8 +222,9 @@ if __name__ == "__main__":
     # only update google calendar if they don't all match (means there are changes)
     if config.force or not check_ts_match(outlook_events_ts):
         # delete all existing google events then add all outlook events
+        google_events = [build_gcal_event(event) for event in outlook_events]
         delete_google_events(se)
-        add_google_events(se, outlook_events)
+        add_google_events(se, google_events)
 
         # save event ids/timestamps json to disk for the next run
         with open(config.events_ts_json_path, "w") as f:
