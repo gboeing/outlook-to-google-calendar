@@ -158,14 +158,14 @@ def delete_google_events(se) -> None:
     print(f"{timestamp()}  Deleted {len(gcal_events)} events from Google.")
 
 
-def add_google_events(se, events) -> None:
+def add_google_events(se, google_events) -> None:
     # add all events to google calendar
-    for event in events:
-        result = se.insert(calendarId=config.google_calendar_id, body=event).execute()
+    for google_event in google_events:
+        result = se.insert(calendarId=config.google_calendar_id, body=google_event).execute()
         assert isinstance(result, dict)
         time.sleep(config.pause)
 
-    print(f"{timestamp()} Added {len(events)} events to Google.")
+    print(f"{timestamp()} Added {len(google_events)} events to Google.")
 
 
 def get_event_timestamps(outlook_events):
