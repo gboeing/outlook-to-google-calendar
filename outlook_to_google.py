@@ -57,11 +57,15 @@ def get_outlook_events(cal):
     # get all events from an outlook calendar
     start = dt.datetime.today() - dt.timedelta(days=config.previous_days)
     end = dt.datetime.today() + dt.timedelta(days=config.future_days)
-    query = (
-        cal.new_query("start").greater_equal(start).chain("and").on_attribute("end").less_equal(end)
+    start = start.replace(tzinfo=cal.protocol.timezone)
+    end = end.replace(tzinfo=cal.protocol.timezone)
+    events = cal.get_events(
+        limit=None,
+        include_recurring=True,
+        start_recurring=start.isoformat(),
+        end_recurring=end.isoformat(),
     )
-    events = cal.get_events(query=query, limit=None, include_recurring=True)
-    events = list(events)
+    events = [event for event in events if event.start >= start and event.end <= end]
 
     print(f"{timestamp()} Retrieved {len(events)} events from Outlook.")
     return events
@@ -98,8 +102,11 @@ def build_gcal_event(event):
     if event.is_all_day:
         # all day events just get a start/end date
         # use UTC start date to get correct day
-        date = str(event.start.astimezone(pytz.utc).date())
-        start_end = {"start": {"date": date}, "end": {"date": date}}
+        start_date = event.start.astimezone(pytz.utc).date()
+        end_date = event.end.astimezone(pytz.utc).date()
+        if end_date <= start_date:
+            end_date = start_date + dt.timedelta(days=1)
+        start_end = {"start": {"date": str(start_date)}, "end": {"date": str(end_date)}}
     else:
         # normal events have start/end datetime/timezone
         start_end = {
