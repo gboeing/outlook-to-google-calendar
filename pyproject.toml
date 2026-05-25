@@ -13,7 +13,18 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["prek>=0.4", "pytest>=9", "validate-pyproject[all]>=0.25"]
+dev = ["prek>=0.4", "pytest-cov>=7", "pytest>=9", "validate-pyproject[all]>=0.25"]
+
+[tool.coverage.run]
+source = ["outlook_to_google"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.pytest.ini_options]
+addopts = "--cov --cov-report=term-missing"
+pythonpath = ["."]
+testpaths = ["tests"]
 
 [tool.ruff]
 cache-dir = "~/.cache/pre-commit/ruff"
@@ -27,6 +38,7 @@ extend-select = ["ALL"]
 "credentials/quickstart.py" = ["ALL"]
 "config_sample.py" = ["D100", "S105"]
 "outlook_to_google.py" = ["ANN401"]
+"tests/*.py" = ["S101"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 110 # line length + 10% since it isn't a hard upper bound
