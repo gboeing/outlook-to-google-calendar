@@ -26,7 +26,10 @@ def main() -> None:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file("google_credentials.json", SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                "google_credentials.json",
+                SCOPES,
+            )
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
         with open("google_token.pickle", "wb") as token:
@@ -40,7 +43,11 @@ def main() -> None:
     events_result = (
         service.events()
         .list(
-            calendarId="primary", timeMin=now, maxResults=10, singleEvents=True, orderBy="startTime",
+            calendarId="primary",
+            timeMin=now,
+            maxResults=10,
+            singleEvents=True,
+            orderBy="startTime",
         )
         .execute()
     )
