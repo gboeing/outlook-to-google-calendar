@@ -153,7 +153,8 @@ def delete_google_events(se) -> None:
             eventId=gcal_event["id"],
         )
         result = request.execute()
-        assert result == ""
+        if result != "":
+            raise RuntimeError(f"Unexpected Google delete response: {result!r}")
         time.sleep(config.pause)
     print(f"{timestamp()}  Deleted {len(gcal_events)} events from Google.")
 
@@ -162,7 +163,8 @@ def add_google_events(se, google_events) -> None:
     # add all events to google calendar
     for google_event in google_events:
         result = se.insert(calendarId=config.google_calendar_id, body=google_event).execute()
-        assert isinstance(result, dict)
+        if not isinstance(result, dict):
+            raise RuntimeError(f"Unexpected Google insert response: {result!r}")
         time.sleep(config.pause)
 
     print(f"{timestamp()} Added {len(google_events)} events to Google.")
@@ -188,11 +190,14 @@ def check_ts_match(new_events) -> bool:
             old_events = json.load(f)
 
         # make sure all ids and timestamps match between old and new
-        assert new_events.keys() == old_events.keys()
+        if new_events.keys() != old_events.keys():
+            raise ValueError("Event IDs differ.")
         for k, new_event in new_events.items():
             old_event = old_events[k]
-            assert new_event["created_ts"] == old_event["created_ts"]
-            assert new_event["modified_ts"] == old_event["modified_ts"]
+            if new_event["created_ts"] != old_event["created_ts"]:
+                raise ValueError("Event creation timestamp differs.")
+            if new_event["modified_ts"] != old_event["modified_ts"]:
+                raise ValueError("Event modification timestamp differs.")
 
     except Exception:
         # if json file doesn't exist or if any id or timestamp is different
