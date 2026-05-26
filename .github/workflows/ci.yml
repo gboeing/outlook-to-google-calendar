@@ -12,6 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
-      - run: cp config_sample.py config.py
+      - run: cp src/config_sample.py src/config.py
       - run: SKIP=no-commit-to-branch uv run prek run -a
       - run: uv run pytest

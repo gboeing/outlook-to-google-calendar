@@ -1,8 +1,8 @@
-events_ts.json
-config.py
-credentials/*
-!credentials/quickstart.py
-logs/*
+src/events_ts.json
+src/config.py
+src/log.txt
+src/credentials/*
+!src/credentials/quickstart.py
 uv.lock
 .DS_Store
 
