@@ -23,7 +23,7 @@ show_missing = true
 
 [tool.pytest.ini_options]
 addopts = "--cov --cov-report=term-missing"
-pythonpath = ["."]
+pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.ruff]
@@ -35,9 +35,9 @@ extend-ignore = ["T201"]
 extend-select = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
-"credentials/quickstart.py" = ["ALL"]
-"config_sample.py" = ["D100", "S105"]
-"outlook_to_google.py" = ["ANN401"]
+"src/credentials/quickstart.py" = ["ALL"]
+"src/config_sample.py" = ["D100", "S105"]
+"src/outlook_to_google.py" = ["ANN401"]
 "tests/*.py" = ["S101"]
 
 [tool.ruff.lint.pycodestyle]
