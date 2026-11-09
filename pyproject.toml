@@ -6,6 +6,7 @@ readme = "readme.md"
 requires-python = "==3.13.*"
 dependencies = [
     "beautifulsoup4==4.14.*",
+    "boto3",
     "google-api-python-client==2.196.*",
     "google-auth-httplib2==0.4.*",
     "google-auth-oauthlib==1.4.*",
@@ -16,7 +17,7 @@ dependencies = [
 dev = ["prek>=0.4", "pytest-cov>=7", "pytest>=9", "validate-pyproject[all]>=0.25"]
 
 [tool.coverage.run]
-source = ["outlook_to_google"]
+source = ["outlook_to_google", "aws_handler"]
 
 [tool.coverage.report]
 show_missing = true

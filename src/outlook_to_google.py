@@ -10,29 +10,57 @@ from typing import Any
 from bs4 import BeautifulSoup
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from O365 import Account, Connection, FileSystemTokenBackend
+from O365 import Account, FileSystemTokenBackend
 
 import config
 
 
-def authenticate_outlook() -> Any:
-    """Authenticate Microsoft Graph API credentials."""
+def create_outlook_account() -> Any:
+    """Create an Outlook account backed by the configured local token file.
+
+    Returns
+    -------
+    Any
+        O365 account with its token backend configured, without interactive login.
+    """
     credentials = (config.outlook_client_id, config.outlook_client_secret)
     token_backend = FileSystemTokenBackend(
         token_path=config.outlook_token_path,
         token_filename=config.outlook_token_filename,
     )
-    account = Account(credentials, token_backend=token_backend)
-    if not account.is_authenticated:
-        # not authenticated, throw error
-        account.authenticate(scopes=config.outlook_scopes)
+    return Account(credentials, token_backend=token_backend)
 
-    connection = Connection(
-        credentials,
-        token_backend=token_backend,
-        scopes=config.outlook_scopes,
-    )
-    connection.refresh_token()
+
+def authenticate_outlook(account: Any, *, interactive: bool = True) -> Any:
+    """Authenticate an Outlook account and refresh its own connection.
+
+    Parameters
+    ----------
+    account : Any
+        O365 account created with a local token backend.
+    interactive : bool, optional
+        Allow browser-based sign-in for local execution. Lambda disables it.
+
+    Returns
+    -------
+    Any
+        Authenticated account using the refreshed connection.
+
+    Raises
+    ------
+    RuntimeError
+        Local sign-in is required or the user did not complete sign-in.
+    """
+    if not account.is_authenticated:
+        if not interactive:
+            msg = "Outlook sign-in is required. Sign in locally and upload the token file."
+            raise RuntimeError(msg)
+        if not account.authenticate(scopes=config.outlook_scopes):
+            msg = "Outlook sign-in was not completed."
+            raise RuntimeError(msg)
+
+    # Refresh the connection used for calendar requests, not a second connection.
+    account.con.refresh_token()
 
     print(f"{timestamp()} Authenticated Outlook.")
     return account
@@ -182,11 +210,24 @@ def get_event_timestamps(outlook_events: list[Any]) -> dict[str, dict[str, int]]
     return ts
 
 
-def check_ts_match(new_events: dict[str, dict[str, int]]) -> bool:
-    """Compare old event IDs and timestamps to newly retrieved events."""
+def check_ts_match(new_events: dict[str, dict[str, int]], state_path: Path) -> bool:
+    """Compare retrieved timestamps with the saved state.
+
+    Parameters
+    ----------
+    new_events : dict[str, dict[str, int]]
+        Event IDs and timestamps from the current Outlook result.
+    state_path : Path
+        Local state file, including the temporary file used in Lambda.
+
+    Returns
+    -------
+    bool
+        True if the saved state contains the same IDs and timestamps.
+    """
     # load the old events' ids/timestamps saved to disk during previous run
     try:
-        with Path(config.events_ts_json_path).open() as f:
+        with state_path.open() as f:
             old_events = json.load(f)
 
         # make sure all ids and timestamps match between old and new
@@ -215,31 +256,62 @@ def timestamp() -> str:
     return f"{dt.datetime.now(tz=dt.UTC).astimezone():%Y-%m-%d %H:%M:%S}"
 
 
-if __name__ == "__main__":
-    print(f"{timestamp()} Started process.")
+def sync_calendar(outlook_cal: Any, se: Any, state_path: Path, *, force: bool) -> bool:
+    """Run the existing calendar rebuild and save state after successful writes.
 
-    # authenticate outlook and google credentials
-    outlook_acct = authenticate_outlook()
-    se = authenticate_google()
+    Parameters
+    ----------
+    outlook_cal : Any
+        Source O365 calendar.
+    se : Any
+        Google Calendar events service.
+    state_path : Path
+        File containing the previous successful event timestamps.
+    force : bool
+        Rebuild even if the timestamps have not changed.
 
-    # get all events from outlook
-    outlook_cal = outlook_acct.schedule().get_default_calendar()
+    Returns
+    -------
+    bool
+        True if the destination was rebuilt and the local state was saved.
+    """
     outlook_events = get_outlook_events(outlook_cal)
     outlook_events_ts = get_event_timestamps(outlook_events)
 
     # check if all the current event ids/timestamps match the previous run
     # only update google calendar if they don't all match (means there are changes)
-    if config.force or not check_ts_match(outlook_events_ts):
+    if force or not check_ts_match(outlook_events_ts, state_path):
         # delete all existing google events then add all outlook events
         google_events = [build_gcal_event(event) for event in outlook_events]
         delete_google_events(se)
         add_google_events(se, google_events)
 
         # save event ids/timestamps json to disk for the next run
-        with Path(config.events_ts_json_path).open("w") as f:
+        with state_path.open("w") as f:
             json.dump(outlook_events_ts, f)
-    else:
-        print(f"{timestamp()} No changes found.")
+        return True
+
+    print(f"{timestamp()} No changes found.")
+    return False
+
+
+def main() -> None:
+    """Run a local sync using the existing configuration and interactive sign-in.
+
+    Returns
+    -------
+    None
+        Results are written to Google Calendar and the configured local state.
+    """
+    print(f"{timestamp()} Started process.")
+    outlook_acct = authenticate_outlook(create_outlook_account())
+    se = authenticate_google()
+    outlook_cal = outlook_acct.schedule().get_default_calendar()
+    sync_calendar(outlook_cal, se, Path(config.events_ts_json_path), force=config.force)
 
     # all done
     print(f"{timestamp()} Finished process.")
+
+
+if __name__ == "__main__":
+    main()

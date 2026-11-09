@@ -1,0 +1,155 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Scheduled calendar sync using an existing private bucket.
+Parameters:
+  RuntimeBucket:
+    Type: String
+    Description: Existing private S3 bucket in us-west-2.
+  CodeKey:
+    Type: String
+    Description: ZIP object key under deployment/ in the same bucket.
+  ScheduleState:
+    Type: String
+    Default: DISABLED
+    AllowedValues: [DISABLED, ENABLED]
+Resources:
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: RuntimeFilesAndLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Missing state must be distinguishable from denied access.
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource:
+                  Fn::Sub: arn:${AWS::Partition}:s3:::${RuntimeBucket}
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource:
+                  - Fn::Sub:
+                      - arn:${AWS::Partition}:s3:::${B}/runtime/config.py
+                      - B:
+                          Ref: RuntimeBucket
+                  - Fn::Sub:
+                      - arn:${AWS::Partition}:s3:::${B}/runtime/outlook_token.txt
+                      - B:
+                          Ref: RuntimeBucket
+                  - Fn::Sub:
+                      - arn:${AWS::Partition}:s3:::${B}/runtime/google_token.pickle
+                      - B:
+                          Ref: RuntimeBucket
+                  - Fn::Sub:
+                      - arn:${AWS::Partition}:s3:::${B}/runtime/events_ts.json
+                      - B:
+                          Ref: RuntimeBucket
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource:
+                  - Fn::Sub:
+                      - arn:${AWS::Partition}:s3:::${B}/runtime/outlook_token.txt
+                      - B:
+                          Ref: RuntimeBucket
+                  - Fn::Sub:
+                      - arn:${AWS::Partition}:s3:::${B}/runtime/google_token.pickle
+                      - B:
+                          Ref: RuntimeBucket
+                  - Fn::Sub:
+                      - arn:${AWS::Partition}:s3:::${B}/runtime/events_ts.json
+                      - B:
+                          Ref: RuntimeBucket
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource:
+                  Fn::GetAtt: [LogGroup, Arn]
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+  SyncFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.13
+      Architectures: [x86_64]
+      Handler: aws_handler.lambda_handler
+      MemorySize: 512
+      Timeout: 180
+      Role:
+        Fn::GetAtt: [ExecutionRole, Arn]
+      Code:
+        S3Bucket:
+          Ref: RuntimeBucket
+        S3Key:
+          Ref: CodeKey
+      Environment:
+        Variables:
+          SYNC_BUCKET:
+            Ref: RuntimeBucket
+      LoggingConfig:
+        LogGroup:
+          Ref: LogGroup
+  ExecutionRetries:
+    Type: AWS::Lambda::EventInvokeConfig
+    Properties:
+      FunctionName:
+        Ref: SyncFunction
+      Qualifier: $LATEST
+      MaximumRetryAttempts: 1
+      MaximumEventAgeInSeconds: 300
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeSync
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  Fn::GetAtt: [SyncFunction, Arn]
+  Schedule:
+    Type: AWS::Scheduler::Schedule
+    DependsOn: ExecutionRetries
+    Properties:
+      ScheduleExpression: cron(10,25,40,55 * * * ? *)
+      ScheduleExpressionTimezone: UTC
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      State:
+        Ref: ScheduleState
+      Target:
+        Arn:
+          Fn::GetAtt: [SyncFunction, Arn]
+        RoleArn:
+          Fn::GetAtt: [SchedulerRole, Arn]
+        Input: '{}'
+        RetryPolicy:
+          MaximumRetryAttempts: 1
+          MaximumEventAgeInSeconds: 300
+Outputs:
+  FunctionName:
+    Value:
+      Ref: SyncFunction
+  LogGroupName:
+    Value:
+      Ref: LogGroup
+  ScheduleName:
+    Value:
+      Ref: Schedule

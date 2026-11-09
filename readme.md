@@ -1,19 +1,37 @@
-# Microsoft Office 365 calendar -> Google calendar
+# Outlook to Google calendar
 
-## Overview
+One-way sync from Outlook to a dedicated Google calendar, including new, changed,
+and deleted events. If event IDs or timestamps change, the tool deletes all events
+in the destination calendar and copies the Outlook events again. Use this calendar
+only for the sync.
 
-One-way sync from a Microsoft Office 365 Outlook calendar to a Google calendar, handling new, updated, and deleted events.
+## AWS setup
 
-The script connects to the Microsoft API using the [O365 package](https://github.com/O365/python-o365#calendar) and connects to the Google API using its [Python client](https://developers.google.com/calendar/api/quickstart/python). Familiarize yourself with their documentation as you may need to enable APIs or create credentials per their instructions before you begin. See also the Google Calendar API [reference](https://developers.google.com/calendar/v3/reference/events).
+EventBridge Scheduler runs a Python 3.13 Lambda function at :10, :25, :40, and :55
+each hour. The deployment is in Oregon (`us-west-2`), under stack `calendar-sync`.
+One private S3 bucket, `outlook-to-google-calendar-[ID]-us-west-2`, stores
+the code package and the runtime configuration, calendar tokens, and sync state.
 
-## Setup
+Each run downloads the runtime files, refreshes credentials, checks Outlook, and
+rebuilds the Google calendar only when needed. It saves refreshed tokens and
+successful sync state to S3. Logs are kept for 7 days. Failed executions retry once.
 
-  - Create `src/config.py` (you can adapt [`src/config_sample.py`](src/config_sample.py)) to hold your personal configuration details, including your Microsoft `client_id` and `client_secret` and your Google calendar ID.
-      - **Create a new Google calendar just for this application, or else your existing events will be deleted!**
-      - Create Google credentials for this application (see overview section above) and save as `src/credentials/google_credentials.json`.
-      - Get the Microsoft `client_id` and `client_secret` by following the O365 [instructions](https://github.com/O365/python-o365#authentication) on how to authenticate on behalf of a user.
-  - Run `uv sync` to install the required Python dependencies into a virtual environment.
-  - In the [credentials folder](src/credentials), run [`python quickstart.py`](src/credentials/quickstart.py) to create a Google API access token.
-  - Microsoft API access token is created interactively via URL on first run, then permanently stored. It expires in 90 days *if* you don't run the script within that time.
-  - On your server, set up a cron job to run [`src/outlook_to_google.py`](src/outlook_to_google.py) (using [run.sh](src/run.sh)) every 15 minutes (or however often you need).
-  - The script will check Microsoft for calendar events and compare them to the calendar events it saved (in events_ts.json) during the previous run. **If they differ (in IDs or timestamps), it will delete all events on this Google calendar and then add all Microsoft calendar events to the Google calendar.**
+## Updates and maintenance
+
+1. To update code, sign in and deploy from the repository root. Deployment
+   preserves the runtime files in S3.
+
+   ```bash
+   aws login --profile calendar-sync
+   bash aws/deploy.sh calendar-sync outlook-to-google-calendar-[ID]-us-west-2 calendar-sync ENABLED
+   ```
+
+2. To update settings, upload the revised `src/config.py` to `runtime/config.py`
+   in the bucket. Lambda uses the new settings on its next run.
+3. If sync stops, check the function's CloudWatch logs. If calendar sign-in is
+   required, disable the schedule and let pending runs finish, sign in locally,
+   upload the replacement tokens to `runtime/`, then enable the schedule.
+4. Before restarting the server job, disable the AWS schedule, let pending runs
+   finish, and download the current tokens and state from S3. Run only one scheduler.
+
+A failed rebuild can leave the destination incomplete until a later successful run.

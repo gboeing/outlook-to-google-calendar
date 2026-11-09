@@ -3,7 +3,6 @@ src/config.py
 src/log.txt
 src/credentials/*
 !src/credentials/quickstart.py
-uv.lock
 .DS_Store
 
 # Byte-compiled / optimized / DLL files

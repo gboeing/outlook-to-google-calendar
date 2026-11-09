@@ -48,6 +48,7 @@ repos:
       - id: mypy
         additional_dependencies:
           - beautifulsoup4
+          - boto3
           - google-api-python-client
           - google-auth-httplib2
           - google-auth-oauthlib
